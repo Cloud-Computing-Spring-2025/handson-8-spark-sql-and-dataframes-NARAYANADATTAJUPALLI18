@@ -1,14 +1,20 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import explode, split, col
+from pyspark.sql.functions import explode, split, trim, lower, col, count
 
-# Initialize Spark Session
-spark = SparkSession.builder.appName("HashtagTrends").getOrCreate()
+spark = SparkSession.builder.appName("Hashtag Trends").getOrCreate()
 
-# Load posts data
-posts_df = spark.read.option("header", True).csv("input/posts.csv")
+# Load data
+df = spark.read.csv("input/posts.csv", header=True, inferSchema=True)
 
-# TODO: Split the Hashtags column into individual hashtags and count the frequency of each hashtag and sort descending
+# Explode hashtags into individual rows
+hashtags = df.select(explode(split(col("Hashtags"), ",")).alias("Hashtag"))
+hashtags = hashtags.withColumn("Hashtag", trim(lower(col("Hashtag"))))
 
+# Count and sort hashtags
+top_hashtags = hashtags.groupBy("Hashtag").agg(count("*").alias("Count")) \
+                       .orderBy(col("Count").desc()) \
+                       .limit(10)
 
-# Save result
-hashtag_counts.coalesce(1).write.mode("overwrite").csv("outputs/hashtag_trends.csv", header=True)
+# Save results
+top_hashtags.coalesce(1).write.csv("outputs/task1_top_hashtags.csv", header=True, mode="overwrite")
+spark.stop()

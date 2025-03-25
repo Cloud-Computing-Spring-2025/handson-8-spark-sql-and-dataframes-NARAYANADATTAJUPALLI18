@@ -1,14 +1,24 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import when, avg, col
+from pyspark.sql.functions import when, avg, col,round
 
-spark = SparkSession.builder.appName("SentimentVsEngagement").getOrCreate()
+spark = SparkSession.builder.appName("Sentiment vs Engagement").getOrCreate()
 
-# Load posts data
-posts_df = spark.read.option("header", True).csv("input/posts.csv", inferSchema=True)
+# Load data
+df = spark.read.csv("input/posts.csv", header=True, inferSchema=True)
 
-# TODO: Implement the task here
-# Positive (> 0.3), Neutral (-0.3 to 0.3), Negative (< -0.3)
+# Categorize sentiment
+df = df.withColumn("Sentiment",
+    when(col("SentimentScore") > 0.2, "Positive")
+    .when(col("SentimentScore") < -0.2, "Negative")
+    .otherwise("Neutral")
+)
 
+# Aggregate engagement
+sentiment_stats = df.groupBy("Sentiment").agg(
+    round(avg("Likes"),1).alias("Avg_Likes"),
+    round(avg("Retweets"),1).alias("Avg_Retweets")
+).orderBy("Sentiment")
 
-# Save result
-sentiment_stats.coalesce(1).write.mode("overwrite").csv("outputs/sentiment_engagement.csv", header=True)
+# Save results
+sentiment_stats.coalesce(1).write.csv("outputs/task3_sentiment_vs_engagement.csv", header=True, mode="overwrite")
+spark.stop()
