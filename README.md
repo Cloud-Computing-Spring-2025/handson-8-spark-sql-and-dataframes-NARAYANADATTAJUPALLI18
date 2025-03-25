@@ -183,4 +183,3 @@ project_root/
 ## 👨‍💻 Author
 
 Narayanadatta Jupalli  
-For academic and learning purposes.
